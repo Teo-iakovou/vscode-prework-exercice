@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import ChallengesList from "../_components/HomePage/ChallengesList";
-import Cookies from "js-cookie";
-import { useAddChallengeMutation } from "../services/graphqlApi";
+import { useAddChallengeMutation } from "../../src/services/graphqlApi";
 
 const Challenges = () => {
   const [newChallenge, setNewChallenge] = useState({

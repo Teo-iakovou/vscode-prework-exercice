@@ -1,7 +1,7 @@
 import { configureStore } from "@reduxjs/toolkit";
 import authReducer from "./slices/authSlice";
 import themeReducer from "./slices/themeSlice";
-import { gqlApi } from "./services/graphqlApi"; // Import the GraphQL API
+import { gqlApi } from "../services/graphqlApi"; // Import the GraphQL API
 
 const store = configureStore({
   reducer: {
