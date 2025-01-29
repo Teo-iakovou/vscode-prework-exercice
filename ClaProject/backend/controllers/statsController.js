@@ -4,28 +4,21 @@ const Challenge = require("../models/Challenge");
 // Solved Challenges Statistics
 const getSolvedChallengesStats = async (req, res) => {
   try {
-    const userId = req.user.id;
-
-    const stats = await Submission.aggregate([
-      { $match: { userId: userId, status: "Correct" } },
-      {
-        $lookup: {
-          from: "challenges",
-          localField: "challengeId",
-          foreignField: "_id",
-          as: "challengeDetails",
-        },
-      },
-      { $unwind: "$challengeDetails" },
+    const stats = await Challenge.aggregate([
       {
         $group: {
-          _id: "$challengeDetails.level",
-          count: { $sum: 1 },
+          _id: "$level",
+          totalChallenges: { $sum: 1 },
+          solvedChallenges: {
+            $sum: {
+              $cond: [{ $eq: ["$status", "passed"] }, 1, 0],
+            },
+          },
         },
       },
     ]);
 
-    res.json(stats);
+    res.status(200).json(stats);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -34,26 +27,23 @@ const getSolvedChallengesStats = async (req, res) => {
 // Trending Categories
 const getTrendingCategories = async (req, res) => {
   try {
-    const trending = await Submission.aggregate([
+    const categories = await Submission.aggregate([
+      { $match: { status: "passed" } },
       {
         $lookup: {
           from: "challenges",
-          localField: "challengeId",
+          localField: "challenge",
           foreignField: "_id",
-          as: "challengeDetails",
+          as: "challengeData",
         },
       },
-      { $unwind: "$challengeDetails" },
-      {
-        $group: {
-          _id: "$challengeDetails.category",
-          count: { $sum: 1 },
-        },
-      },
+      { $unwind: "$challengeData" },
+      { $group: { _id: "$challengeData.category", count: { $sum: 1 } } },
       { $sort: { count: -1 } },
+      { $project: { category: "$_id", count: 1, _id: 0 } },
     ]);
 
-    res.json(trending);
+    res.status(200).json(categories);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -63,29 +53,43 @@ const getTrendingCategories = async (req, res) => {
 const getHeatmap = async (req, res) => {
   try {
     const { start_date, end_date } = req.query;
+    const startDate = start_date
+      ? new Date(start_date)
+      : new Date(new Date().setFullYear(new Date().getFullYear() - 1));
+    const endDate = end_date ? new Date(end_date) : new Date();
 
-    const submissions = await Submission.aggregate([
+    const heatmapData = await Submission.aggregate([
       {
         $match: {
-          userId: req.user.id,
-          createdAt: {
-            $gte: new Date(start_date),
-            $lte: new Date(end_date),
+          status: "passed",
+          user: req.user.id,
+          submittedAt: { $gte: startDate, $lte: endDate },
+        },
+      },
+      {
+        $addFields: {
+          date: {
+            $dateToString: { format: "%Y/%m/%d", date: "$submittedAt" },
           },
         },
       },
       {
         $group: {
-          _id: {
-            $dateToString: { format: "%Y-%m-%d", date: "$createdAt" },
-          },
+          _id: "$date",
           count: { $sum: 1 },
         },
       },
-      { $sort: { _id: 1 } },
+      {
+        $project: {
+          date: "$_id",
+          count: 1,
+          _id: 0,
+        },
+      },
+      { $sort: { date: 1 } },
     ]);
 
-    res.json(submissions);
+    res.status(200).json(heatmapData);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
