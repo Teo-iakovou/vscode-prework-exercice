@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import ChallengesList from "../_components/HomePage/ChallengesList";
-import axios from "axios";
 import Cookies from "js-cookie";
+import { useAddChallengeMutation } from "../services/graphqlApi";
 
 const Challenges = () => {
   const [newChallenge, setNewChallenge] = useState({
@@ -9,26 +9,16 @@ const Challenges = () => {
     description: "",
   });
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [addChallenge, { isLoading }] = useAddChallengeMutation();
 
-  // Function to add a new challenge
+  // Function to add a new challenge using GraphQL Mutation
   const handleAddChallenge = async (e) => {
     e.preventDefault();
-    setLoading(true);
     try {
-      const token = Cookies.get("token");
-      await axios.post(
-        `${process.env.NEXT_PUBLIC_NESTJS_API_URL}/challenges`,
-        newChallenge,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
+      await addChallenge(newChallenge).unwrap();
       setNewChallenge({ title: "", description: "" });
-      setLoading(false);
-      window.location.reload(); // Reload page to fetch new challenges
     } catch (err) {
       setError("Failed to add challenge");
-      setLoading(false);
     }
   };
 
@@ -61,9 +51,9 @@ const Challenges = () => {
         <button
           type="submit"
           className="p-2 bg-blue-500 text-white rounded"
-          disabled={loading}
+          disabled={isLoading}
         >
-          {loading ? "Adding..." : "Add Challenge"}
+          {isLoading ? "Adding..." : "Add Challenge"}
         </button>
       </form>
 
