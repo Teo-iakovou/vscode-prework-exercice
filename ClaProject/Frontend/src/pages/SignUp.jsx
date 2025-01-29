@@ -1,13 +1,13 @@
 import React from "react";
-import { login } from "../redux/slices/authSlice";
-import codingLogo from "../assets/coding.png";
+import axios from "axios";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Link, useNavigate } from "react-router-dom";
-import { useDispatch } from "react-redux";
+import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
+import codingLogo from "../assets/coding.png";
 
-// Zod schema for validation
+// Zod validation schema
 const signUpSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
@@ -16,7 +16,6 @@ const signUpSchema = z.object({
 });
 
 const SignUp = () => {
-  const dispatch = useDispatch();
   const navigate = useNavigate();
   const {
     register,
@@ -25,11 +24,30 @@ const SignUp = () => {
   } = useForm({
     resolver: zodResolver(signUpSchema),
   });
-  const onSubmit = (data) => {
-    // Dispatch login action with user data (simulating login after signup)
-    dispatch(login(data));
-    navigate("/home"); // Redirect to home page
+
+  const onSubmit = async (data) => {
+    try {
+      await axios.post(
+        `${process.env.NEXT_PUBLIC_EXPRESS_API_URL}/managers/signup`,
+        {
+          firstName: data.firstName,
+          lastName: data.lastName,
+          email: data.email,
+          password: data.password,
+        }
+      );
+
+      alert("Signup successful! Redirecting to login...");
+      navigate("/signin"); // Redirect to SignIn page on success
+    } catch (error) {
+      console.error(
+        "Signup Error:",
+        error.response?.data?.message || "Signup failed"
+      );
+      alert(error.response?.data?.message || "Signup failed");
+    }
   };
+
   return (
     <div className="flex justify-center items-center h-screen bg-gray-100">
       <div className="flex w-3/5 shadow-lg rounded-lg overflow-hidden">
@@ -46,7 +64,7 @@ const SignUp = () => {
               type="text"
               placeholder="First Name"
               {...register("firstName")}
-              className="w-full p-3 mb-4 border rounded-md bg-indigo-900 text-white placeholder-white"
+              className="w-full p-3 mb-4 border rounded-md"
             />
             {errors.firstName && (
               <p className="text-red-500 text-sm">{errors.firstName.message}</p>
@@ -56,7 +74,7 @@ const SignUp = () => {
               type="text"
               placeholder="Last Name"
               {...register("lastName")}
-              className="w-full p-3 mb-4 border rounded-md bg-indigo-900 text-white placeholder-white"
+              className="w-full p-3 mb-4 border rounded-md"
             />
             {errors.lastName && (
               <p className="text-red-500 text-sm">{errors.lastName.message}</p>
@@ -66,7 +84,7 @@ const SignUp = () => {
               type="email"
               placeholder="Email"
               {...register("email")}
-              className="w-full p-3 mb-4 border rounded-md bg-indigo-900 text-white placeholder-white"
+              className="w-full p-3 mb-4 border rounded-md"
             />
             {errors.email && (
               <p className="text-red-500 text-sm">{errors.email.message}</p>
@@ -76,7 +94,7 @@ const SignUp = () => {
               type="password"
               placeholder="Password"
               {...register("password")}
-              className="w-full p-3 mb-4 border rounded-md bg-indigo-900 text-white placeholder-white"
+              className="w-full p-3 mb-4 border rounded-md"
             />
             {errors.password && (
               <p className="text-red-500 text-sm">{errors.password.message}</p>
