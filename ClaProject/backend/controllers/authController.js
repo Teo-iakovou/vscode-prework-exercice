@@ -1,7 +1,9 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+const { loginUserService } = require("../services/authService");
 
+const { registerUser } = require("../services/authService");
 // Register Coder
 const registerCoder = async (req, res) => {
   try {
@@ -44,20 +46,10 @@ const registerManager = async (req, res) => {
 const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
-    const user = await User.findOne({ email });
-    if (!user || !(await bcrypt.compare(password, user.password))) {
-      return res.status(401).json({ message: "Invalid credentials." });
-    }
-    const token = jwt.sign(
-      { id: user._id, role: user.role },
-      process.env.JWT_SECRET,
-      {
-        expiresIn: "1h",
-      }
-    );
-    res.json({ token });
+    const token = await loginUserService(email, password);
+    res.json({ token, message: "Login successful." });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(400).json({ message: error.message });
   }
 };
 // Get User Profile
@@ -90,11 +82,42 @@ const updateProfile = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+const registerController = async (req, res) => {
+  try {
+    const response = await registerUser(req.body);
+    res.status(201).json(response);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
+const verifyEmailController = async (req, res) => {
+  try {
+    const { token } = req.query;
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
+    const user = await User.findById(decoded.id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (user.isVerified) {
+      return res.status(400).json({ message: "User already verified" });
+    }
+
+    user.isVerified = true;
+    await user.save();
+
+    res.send("<h1>Email verified successfully!</h1>");
+  } catch (error) {
+    res.status(400).send("<h1>Invalid or expired token</h1>");
+  }
+};
 module.exports = {
   registerCoder,
   registerManager,
   loginUser,
   getProfile,
   updateProfile,
+  registerController,
+  verifyEmailController,
 };
