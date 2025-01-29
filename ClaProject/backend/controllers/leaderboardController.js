@@ -3,10 +3,10 @@ const User = require("../models/User");
 // Get Full Leaderboard
 const getLeaderboard = async (req, res) => {
   try {
-    const leaderboard = await User.find({ role: "coder" })
-      .sort({ score: -1 }) // Sort by score in descending order
-      .select("firstName lastName score"); // Only include relevant fields
-    res.json(leaderboard);
+    const coders = await User.find({ role: "coder" })
+      .sort({ score: -1 })
+      .select("name score");
+    res.status(200).json({ leaderboard: coders });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
