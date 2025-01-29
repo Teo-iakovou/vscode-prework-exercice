@@ -14,6 +14,7 @@ app.use(express.json());
 connectDB();
 
 // Routes
+
 app.use("/api/auth", require("./routes/auth"));
 app.use("/api/challenges", require("./routes/challenges"));
 app.use("/api/leaderboard", require("./routes/leaderboard"));

@@ -55,11 +55,14 @@ const loginUser = async (req, res) => {
 // Get User Profile
 const getProfile = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id).select("-password");
-    if (!user) {
-      return res.status(404).json({ message: "User not found." });
+    const user = await User.findById(req.user.id);
+    if (req.user.role === "coder") {
+      const rank =
+        (await User.countDocuments({ score: { $gt: user.score } })) + 1;
+      res.status(200).json({ ...user._doc, rank });
+    } else {
+      res.status(200).json(user);
     }
-    res.json(user);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -68,20 +71,16 @@ const getProfile = async (req, res) => {
 // Update User Profile
 const updateProfile = async (req, res) => {
   try {
-    const { firstName, lastName, about } = req.body;
-    const user = await User.findById(req.user.id);
-    if (!user) return res.status(404).json({ message: "User not found." });
-
-    user.firstName = firstName || user.firstName;
-    user.lastName = lastName || user.lastName;
-    user.about = about || user.about;
-
-    await user.save();
-    res.json({ message: "Profile updated successfully.", user });
+    const updates = req.body;
+    const user = await User.findByIdAndUpdate(req.user.id, updates, {
+      new: true,
+    });
+    res.status(200).json({ message: "Profile updated successfully", user });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
+
 const registerController = async (req, res) => {
   try {
     const response = await registerUser(req.body);
