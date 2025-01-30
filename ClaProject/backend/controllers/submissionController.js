@@ -4,43 +4,58 @@ const User = require("../models/User");
 
 const gradeSubmission = async (req, res) => {
   try {
-    const { challengeId, lang, code } = req.body;
-
-    // Validate the challenge exists
-    const challenge = await Challenge.findById(challengeId);
+    const { challenge_id, lang, code } = req.body;
+    const challenge = await Challenge.findById(challenge_id);
     if (!challenge) {
-      return res.status(404).json({ message: "Challenge not found." });
+      return res.status(404).json({ message: "Challenge not found" });
     }
 
-    // Create a submission entry
-    const submission = new Submission({
-      challengeId,
-      userId: req.user.id,
+    // Check if the challenge is already solved by this user
+    const previousSubmission = await Submission.findOne({
+      challenge: challenge_id,
+      user: req.user.id,
+      status: "passed",
+    });
+    if (previousSubmission) {
+      return res.status(400).json({ message: "Challenge already solved" });
+    }
+
+    const payload = {
       lang,
       code,
-    });
-    await submission.save();
+      func_name: challenge.code.function_name,
+      tests: challenge.tests,
+    };
 
-    // Simulate grading logic
-    const isCorrect = Math.random() > 0.5; // Random correctness simulation
-    submission.status = isCorrect ? "Correct" : "Incorrect";
-    submission.output = isCorrect
-      ? challenge.tests[0].output
-      : "Incorrect output";
-    await submission.save();
+    const runnerResponse = await axios.post(
+      "https://runlang-v1.onrender.com/run",
+      payload
+    );
+    const { status, test_results } = runnerResponse.data;
 
-    // Update user score if correct
-    if (isCorrect) {
-      const user = await User.findById(req.user.id);
-      user.score += 10; // Increment score by 10 for correct submission
-      await user.save();
+    let score = 0;
+    if (status === "passed") {
+      score = test_results.reduce((acc, test) => acc + test.weight * 100, 0);
     }
 
-    res.json({
-      message: "Submission graded.",
-      status: submission.status,
-      output: submission.output,
+    const submission = new Submission({
+      user: req.user.id,
+      challenge: challenge_id,
+      status,
+      score,
+      code,
     });
+
+    await submission.save();
+
+    // Update user's total score
+    if (status === "passed") {
+      await User.findByIdAndUpdate(req.user.id, { $inc: { score } });
+    }
+
+    res
+      .status(201)
+      .json({ message: "Submission graded successfully", submission });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

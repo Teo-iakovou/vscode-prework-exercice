@@ -1,9 +1,12 @@
-import codingLogo from "../assets/coding.png";
 import React, { useState } from "react";
-import { login } from "../redux/slices/authSlice";
+import axios from "axios";
 import { useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { Link } from "react-router-dom";
+import Cookies from "js-cookie";
+import codingLogo from "../assets/coding.png";
+
+import { login } from "../redux/slices/authSlice"; // Redux action
 
 const SignIn = () => {
   const dispatch = useDispatch();
@@ -20,18 +23,34 @@ const SignIn = () => {
     if (email && !/\S+@\S+\.\S+/.test(email))
       newErrors.email = "Invalid email format";
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0; // Returns true if no errors
+    return Object.keys(newErrors).length === 0;
   };
 
-  // Handle form submission
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
 
-    // Dispatch login action with mock user data
-    const user = { name: "Teo Iakovou", email };
-    dispatch(login(user)); // Update Redux auth state
-    navigate("/home"); // Navigate to home page
+    try {
+      const response = await axios.post(
+        `${process.env.NEXT_PUBLIC_EXPRESS_API_URL}/managers/signin`,
+        {
+          email,
+          password,
+        }
+      );
+
+      const token = response.data.token;
+      Cookies.set("token", token, { expires: 7 }); // Store token in cookies for 7 days
+      dispatch(login(token)); // Store token in Redux
+
+      navigate("/home"); // Redirect to dashboard
+    } catch (error) {
+      console.error(
+        "Signin Error:",
+        error.response?.data?.message || "Signin failed"
+      );
+      alert(error.response?.data?.message || "Signin failed");
+    }
   };
 
   return (
@@ -51,36 +70,29 @@ const SignIn = () => {
               placeholder="Email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full p-2 mb-4 border rounded-md bg-gray-100"
+              className="w-full p-2 mb-4 border rounded-md"
             />
             {errors.email && (
               <p className="text-red-500 text-sm">{errors.email}</p>
             )}
+
             <input
               type="password"
               placeholder="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full p-2 mb-4 border rounded-md bg-gray-100"
+              className="w-full p-2 mb-4 border rounded-md"
             />
             {errors.password && (
               <p className="text-red-500 text-sm">{errors.password}</p>
             )}
+
             <button
               type="submit"
-              className="w-full p-3 bg-indigo-600 text-white rounded-md hover:bg-indigo-500 transition mt-4"
+              className="w-full p-3 bg-indigo-600 text-white rounded-md"
             >
               Sign In
             </button>
-            <p className="text-sm mt-4">
-              New to CodeCLA?
-              <Link
-                to="/signup"
-                className="text-indigo-600 font-bold hover:underline ml-2"
-              >
-                Sign Up
-              </Link>
-            </p>
           </form>
         </div>
       </div>
